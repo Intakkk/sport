@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mes Personal Records</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h2>Choisis le type de PR</h2>
+  <select id="prSelect">
+    <option value="">-- Sélectionner un PR --</option>
+  </select>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

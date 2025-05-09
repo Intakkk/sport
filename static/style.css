@@ -1,0 +1,101 @@
+/* Reset de base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Corps de la page */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+/* Formulaire */
+form {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  max-width: 300px;
+  margin-bottom: 2rem;
+}
+
+form input,
+form button,
+form select {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+form button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+form button:hover {
+  background-color: #0056b3;
+}
+
+/* Section tableau + graphique */
+#dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Tableau des PR */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+table thead {
+  background-color: #007bff;
+  color: white;
+}
+
+table th,
+table td {
+  padding: 1rem;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Graphique */
+#chart-container {
+  max-width: 800px;
+  width: 100%;
+  margin: auto;
+}
+
+canvas#prChart {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Message ou alerte */
+#message {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: #d9534f;
+  text-align: center;
+}

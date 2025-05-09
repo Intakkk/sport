@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
@@ -35,6 +35,7 @@ class Exo(db.Model):
 
 class Personal_record(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    pr = db.Column(db.String(100))
     quantity = db.Column(db.Integer)
     time = db.Column(db.String(100))
     added_weight = db.Column(db.Float)
@@ -78,6 +79,10 @@ def generate_token(user_id):
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
     return token
 
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
@@ -97,7 +102,11 @@ def register():
     db.session.commit()
 
     return jsonify({"message": "Utilisateur créé avec succès"}), 201
-    
+
+@app.route("/login-page")
+def login_page():
+    return render_template("login.html")
+
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -135,40 +144,54 @@ def add_exo():
     db.session.commit()
     return jsonify({"message": "Exo ajouté avec succès."}), 201
 
-@app.route("/personal_record", methods=["GET"])
+@app.route("/personal-record-page")
+def personal_record_page():
+    return render_template("personal_record.html")
+
+@app.route("/pr-types", methods=["GET"])
 @token_required
-def get_personal_record(current_user):
-    pr = Personal_record.query.filter_by(user_id=current_user.id)
+def get_pr_types(current_user):
+    pr_types = db.session.query(Personal_record.pr).filter_by(user_id=current_user.id).distinct().all()
+    return jsonify([pr[0] for pr in pr_types])
+
+@app.route("/personal-record-page/<pr_type>")
+def personal_record_detail(pr_type):
+    return render_template("personal_record_type.html", pr_type=pr_type)
+
+@app.route("/personal-record/<pr_type>", methods=["GET"])
+@token_required
+def get_personal_record(current_user, pr_type):
+    pr = Personal_record.query.filter_by(user_id=current_user.id, pr=pr_type).order_by(Personal_record.date.asc()).all()
     result = []
 
     for i in pr:
         result.append({
-            "id": i.id,
             "quantity": i.quantity,
             "added_weight": i.added_weight,
             "date": i.date,
             "weight": i.weight,
             "bodyweight": i.bodyweight
         })
+    
     return jsonify(result)        
 
-@app.route("/personal_record", methods=["POST"])
+@app.route("/personal-record", methods=["POST"])
 @token_required
 def add_personal_record(current_user):
     data = request.get_json()
 
-    if not all(key in data for key in ["exo_id", "quantity", "time", "added_weight", "date", "weight"]):
+    if not all(key in data for key in ["exo_id", "pr", "quantity", "time", "added_weight", "date", "weight"]):
             return jsonify({"message": "Données invalides; champs manquants"}), 400
 
     bodyweight = round((data["weight"]+data["added_weight"])/data["weight"],3)*100
 
-    pr = Personal_record(exo_id=data["exo_id"], user_id=current_user.id, quantity=data["quantity"], time=data["time"], added_weight=data["added_weight"], date=data["date"], weight=data["weight"], bodyweight=bodyweight)
+    pr = Personal_record(exo_id=data["exo_id"], user_id=current_user.id, pr=data["pr"],quantity=data["quantity"], time=data["time"], added_weight=data["added_weight"], date=data["date"], weight=data["weight"], bodyweight=bodyweight)
 
     db.session.add(pr)
     db.session.commit()
     return jsonify({"message": "PR ajouté avec succès."}), 201
 
-@app.route("/personal_record", methods=["DELETE"])
+@app.route("/personal-record", methods=["DELETE"])
 @token_required
 def del_personal_record(current_user):
     data = request.get_json()
