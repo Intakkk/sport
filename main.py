@@ -7,6 +7,8 @@ from functools import wraps
 from flask_migrate import Migrate
 import os
 
+#test
+
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///main.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
