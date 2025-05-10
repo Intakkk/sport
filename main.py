@@ -113,7 +113,7 @@ def fetch_strava_activities(current_user):
         return {"message": "Token Strava manquant"}, 400
 
     # Vérifie si le token est expiré
-    if token.expires_at < datetime.utcnow().timestamp():
+    if token.expires_at < datetime.datetime.utcnow().timestamp():
         refresh_response = requests.post("https://www.strava.com/oauth/token", data={
             "client_id": STRAVA_CLIENT_ID,
             "client_secret": STRAVA_CLIENT_SECRET,
