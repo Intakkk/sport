@@ -344,7 +344,7 @@ def strava_callback():
 
 @app.route("/strava/sync", methods=["GET"])
 def sync_strava():
-    current_user=User.query.get(user_id=1)
+    current_user=User.query.get(1)
     result = fetch_strava_activities(current_user)
     return jsonify(result)
 
