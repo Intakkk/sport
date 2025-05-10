@@ -292,8 +292,7 @@ def del_personal_record(current_user):
     return jsonify({"message": "PR supprimé avec succès"}), 201
 
 @app.route("/strava/login")
-@token_required
-def strava_login(current_user):
+def strava_login():
     auth_url = (
         f"https://www.strava.com/oauth/authorize"
         f"?client_id={STRAVA_CLIENT_ID}"
