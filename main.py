@@ -2,13 +2,13 @@ from flask import Flask, request, jsonify, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-from jwt import ExpiredSignatureError, DecodeError, decode
 import datetime
 from functools import wraps
 from flask_migrate import Migrate
 import os
 import requests
 from urllib.parse import urlencode
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///main.db"
@@ -18,6 +18,8 @@ db = SQLAlchemy()
 db.init_app(app)
 migrate = Migrate(app, db)
 
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key")
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
@@ -293,17 +295,13 @@ def del_personal_record(current_user):
 
     return jsonify({"message": "PR supprimé avec succès"}), 201
 
-@app.route("/strava/login")
-@token_required
-def strava_login(current_user):
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-
+@app.route("/strava/login", methods=["GET"])
+def strava_login():
     params = {
         "client_id": STRAVA_CLIENT_ID,
         "redirect_uri": STRAVA_REDIRECT_URI,
         "response_type": "code",
         "scope": "activity:read_all",
-        "state": token  # On passe le JWT ici
     }
 
     strava_auth_url = f"https://www.strava.com/oauth/authorize?{urlencode(params)}"
@@ -312,20 +310,9 @@ def strava_login(current_user):
 @app.route("/strava/callback")
 def strava_callback():
     code = request.args.get("code")
-    jwt_token = request.args.get("state")
 
-    if not code or not jwt_token:
-        return jsonify({"message": "Code ou token manquant"}), 400
-
-    try:
-        decoded = decode(jwt_token)
-        user_id = decoded["sub"]
-        current_user = User.query.get(user_id)
-    except (ExpiredSignatureError, DecodeError):
-        return jsonify({"message": "Token JWT invalide"}), 401
-
-    if not current_user:
-        return jsonify({"message": "Utilisateur non trouvé"}), 404
+    if not code:
+        return jsonify({"message": "Code manquant"}), 400
 
     response = requests.post("https://www.strava.com/oauth/token", data={
         "client_id": STRAVA_CLIENT_ID,
@@ -339,14 +326,14 @@ def strava_callback():
 
     tokens = response.json()
 
-    existing_token = StravaToken.query.filter_by(user_id=current_user.id).first()
+    existing_token = StravaToken.query.filter_by(user_id=1).first()
     if existing_token:
         existing_token.access_token = tokens["access_token"]
         existing_token.refresh_token = tokens["refresh_token"]
         existing_token.expires_at = tokens["expires_at"]
     else:
         new_token = StravaToken(
-            user_id=current_user.id,
+            user_id=1,
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
             expires_at=tokens["expires_at"],
