@@ -343,8 +343,8 @@ def strava_callback():
     return jsonify({"message": "Token Strava enregistré avec succès."})
 
 @app.route("/strava/sync", methods=["GET"])
-@token_required
-def sync_strava(current_user):
+def sync_strava():
+    current_user=1
     result = fetch_strava_activities(current_user)
     return jsonify(result)
 
