@@ -8,7 +8,6 @@ from flask_migrate import Migrate
 import os
 import requests
 from urllib.parse import urlencode
-from dotenv import load_dotenv
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///main.db"
@@ -18,8 +17,6 @@ db = SQLAlchemy()
 db.init_app(app)
 migrate = Migrate(app, db)
 
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(dotenv_path)
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key")
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
