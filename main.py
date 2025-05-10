@@ -144,7 +144,7 @@ def fetch_strava_activities(current_user):
         if not StravaActivity.query.filter_by(strava_id=act["id"]).first():
             new_act = StravaActivity(
                 strava_id=act["id"],
-                user_id=current_user,
+                user_id=current_user.id,
             )
             db.session.add(new_act)
             db.session.flush() # pour obtenir new_act.id avant le commit
@@ -344,7 +344,7 @@ def strava_callback():
 
 @app.route("/strava/sync", methods=["GET"])
 def sync_strava():
-    current_user=1
+    current_user=User.query.get(user_id=1)
     result = fetch_strava_activities(current_user)
     return jsonify(result)
 
