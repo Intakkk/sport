@@ -53,11 +53,16 @@ class Personal_record(db.Model):
 
 class StravaActivity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_personal_record_user_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_stravaactivity_user_id'), nullable=False)
     user = db.relationship('User')
     strava_id = db.Column(db.BigInteger, unique=True, nullable=False)
-    hr = db.Column(db.Integer)
-    time = db.Column(db.String(100))
+
+class HeartRateSample(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    activity_id = db.Column(db.Integer, db.ForeignKey('strava_activity.id'), nullable=False)
+    activity = db.relationship('StravaActivity',backref=db.backref('samples', lazy=True))
+    hr = db.Column(db.Integer, nullable=False)
+    time = db.Column(db.Integer, nullable=False)
 
 class StravaToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -125,33 +130,41 @@ def fetch_strava_activities(current_user):
 
     # Appel à l’API Strava pour récupérer les activités
     headers = {"Authorization": f"Bearer {token.access_token}"}
-    res = requests.get("https://www.strava.com/api/v3/athlete/activities/", headers=headers)
+    activities_url = "https://www.strava.com/api/v3/athlete/activities"
+    params = {"per_page": 5, "page": 1}
+    response = requests.get(activities_url, headers=headers, params=params)
 
-    if res.status_code != 200:
+    if response.status_code != 200:
         return {"message": "Erreur API Strava"}, 400
 
-    activities = res.json()
+    activities = response.json()
     for act in activities:
         # Ne stocke que les nouvelles activités
         if not StravaActivity.query.filter_by(strava_id=act["id"]).first():
-            strava_id = act["id"]
-            res = requests.get(f"https://www.strava.com/api/v3/athlete/activities/{strava_id}/streams/heart_rate,time", headers=headers)
-            data = res.json()
-            hr_stream = {}
-            for d in data:
-                if d["type"] == "heart_rate":
-                    hr_stream["hr"] = d["data"]
-                elif d["type"] == "time":
-                    hr_stream["time"] = d["data"]
-            
-            if "hr" in hr_stream and "time" in hr_stream:
-                new_act = StravaActivity(
-                    strava_id=act["id"],
-                    user_id=current_user.id,
-                    hr=hr_stream["hr"],
-                    time=str(hr_stream["time"]),
-                )
+            new_act = StravaActivity(
+                strava_id=act["id"],
+                user_id=current_user,
+            )
             db.session.add(new_act)
+            db.session.flush() # pour obtenir new_act.id avant le commit
+            
+            activity_id = act["id"]
+            hr_stream_url = f"https://www.strava.com/api/v3/activities/{activity_id}/streams"
+            hr_params = {"keys": "heart_rate,time", "key_by_type": "true"}
+            hr_response = requests.get(hr_stream_url, headers=headers, params=hr_params)
+
+            if hr_response.status_code == 200:
+                hr_stream = hr_response.json()
+                if "heart_rate" in hr_stream and "time" in hr_stream:
+                    hr_values = hr_stream["heart_rate"]["data"]
+                    time_values = hr_stream["time"]["data"]
+                    for hr, t in zip(hr_values, time_values):
+                        sample = HeartRateSample(
+                            activity_id=new_act.id,
+                            hr=hr,
+                            time=t
+                        )
+                        db.session.add(sample)
 
     db.session.commit()
     return {"message": "Activités Strava mises à jour"}
@@ -335,17 +348,6 @@ def strava_callback(current_user):
 def sync_strava(current_user):
     result = fetch_strava_activities(current_user)
     return jsonify(result)
-
-@app.route("/nombre-de-voie", methods=["GET"])
-@token_required
-def get_nb_voie(current_user):
-    data = request.get_json()
-    nb_voie = 0
-
-    Personal_record.query.filter_by(user_id=current_user.id, id=data["id"]).delete()
-    db.session.commit()
-
-    return jsonify({"message": nb_voie}), 201
 
 if __name__ == "__main__":
     #with app.app_context():
