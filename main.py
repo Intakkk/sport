@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
@@ -6,8 +6,7 @@ import datetime
 from functools import wraps
 from flask_migrate import Migrate
 import os
-
-#test
+import requests
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///main.db"
@@ -18,6 +17,9 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key")
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
+STRAVA_REDIRECT_URI = os.getenv("STRAVA_REDIRECT_URI")
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,6 +50,23 @@ class Personal_record(db.Model):
     user = db.relationship('User')
     weight = db.Column(db.Integer)
     bodyweight = db.Column(db.Float)
+
+class StravaActivity(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_personal_record_user_id'), nullable=False)
+    user = db.relationship('User')
+    strava_id = db.Column(db.BigInteger, unique=True, nullable=False)
+    hr = db.Column(db.Integer)
+    time = db.Column(db.String(100))
+
+class StravaToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', name='fk_strava_token_user_id'), nullable=False)
+    user = db.relationship('User')
+    access_token = db.Column(db.String(255), nullable=False)
+    refresh_token = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.Integer, nullable=False)
+    strava_athlete_id = db.Column(db.Integer, nullable=True)
 
 def token_required(f):
     @wraps(f)
@@ -80,6 +99,62 @@ def generate_token(user_id):
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
     return token
+
+def fetch_strava_activities(current_user):
+    token = StravaToken.query.filter_by(user_id=current_user.id).first()
+
+    if not token:
+        return {"message": "Token Strava manquant"}, 400
+
+    # Vérifie si le token est expiré
+    if token.expires_at < datetime.utcnow().timestamp():
+        refresh_response = requests.post("https://www.strava.com/oauth/token", data={
+            "client_id": STRAVA_CLIENT_ID,
+            "client_secret": STRAVA_CLIENT_SECRET,
+            "grant_type": "refresh_token",
+            "refresh_token": token.refresh_token
+        })
+        if refresh_response.status_code != 200:
+            return {"message": "Erreur lors du refresh du token"}, 400
+
+        new_tokens = refresh_response.json()
+        token.access_token = new_tokens["access_token"]
+        token.refresh_token = new_tokens["refresh_token"]
+        token.expires_at = new_tokens["expires_at"]
+        db.session.commit()
+
+    # Appel à l’API Strava pour récupérer les activités
+    headers = {"Authorization": f"Bearer {token.access_token}"}
+    res = requests.get("https://www.strava.com/api/v3/athlete/activities/", headers=headers)
+
+    if res.status_code != 200:
+        return {"message": "Erreur API Strava"}, 400
+
+    activities = res.json()
+    for act in activities:
+        # Ne stocke que les nouvelles activités
+        if not StravaActivity.query.filter_by(strava_id=act["id"]).first():
+            strava_id = act["id"]
+            res = requests.get(f"https://www.strava.com/api/v3/athlete/activities/{strava_id}/streams/heart_rate,time", headers=headers)
+            data = res.json()
+            hr_stream = {}
+            for d in data:
+                if d["type"] == "heart_rate":
+                    hr_stream["hr"] = d["data"]
+                elif d["type"] == "time":
+                    hr_stream["time"] = d["data"]
+            
+            if "hr" in hr_stream and "time" in hr_stream:
+                new_act = StravaActivity(
+                    strava_id=act["id"],
+                    user_id=current_user.id,
+                    hr=hr_stream["hr"],
+                    time=str(hr_stream["time"]),
+                )
+            db.session.add(new_act)
+
+    db.session.commit()
+    return {"message": "Activités Strava mises à jour"}
 
 @app.route("/")
 def index():
@@ -202,6 +277,75 @@ def del_personal_record(current_user):
     db.session.commit()
 
     return jsonify({"message": "PR supprimé avec succès"}), 201
+
+@app.route("/strava/login")
+@token_required
+def strava_login(current_user):
+    auth_url = (
+        f"https://www.strava.com/oauth/authorize"
+        f"?client_id={STRAVA_CLIENT_ID}"
+        f"&response_type=code"
+        f"&redirect_uri={STRAVA_REDIRECT_URI}"
+        f"&scope=activity:read_all"
+        f"&approval_prompt=auto"
+    )
+    return redirect(auth_url)
+
+@app.route("/strava/callback")
+@token_required
+def strava_callback(current_user):
+    code = request.args.get("code")
+
+    if not code:
+        return jsonify({"message": "Code manquant"}), 400
+
+    response = requests.post("https://www.strava.com/oauth/token", data={
+        "client_id": STRAVA_CLIENT_ID,
+        "client_secret": STRAVA_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code"
+    })
+
+    if response.status_code != 200:
+        return jsonify({"message": "Erreur récupération token"}), 400
+
+    tokens = response.json()
+
+    existing_token = StravaToken.query.filter_by(user_id=current_user.id).first()
+    if existing_token:
+        existing_token.access_token = tokens["access_token"]
+        existing_token.refresh_token = tokens["refresh_token"]
+        existing_token.expires_at = tokens["expires_at"]
+    else:
+        new_token = StravaToken(
+            user_id=current_user.id,
+            access_token=tokens["access_token"],
+            refresh_token=tokens["refresh_token"],
+            expires_at=tokens["expires_at"],
+            strava_athlete_id=tokens.get("athlete", {}).get("id")
+        )
+        db.session.add(new_token)
+
+    db.session.commit()
+
+    return jsonify({"message": "Token Strava enregistré avec succès."})
+
+@app.route("/strava/sync", methods=["GET"])
+@token_required
+def sync_strava(current_user):
+    result = fetch_strava_activities(current_user)
+    return jsonify(result)
+
+@app.route("/nombre-de-voie", methods=["GET"])
+@token_required
+def get_nb_voie(current_user):
+    data = request.get_json()
+    nb_voie = 0
+
+    Personal_record.query.filter_by(user_id=current_user.id, id=data["id"]).delete()
+    db.session.commit()
+
+    return jsonify({"message": nb_voie}), 201
 
 if __name__ == "__main__":
     #with app.app_context():
