@@ -48,12 +48,34 @@ document.addEventListener("DOMContentLoaded", async () => {
             select.appendChild(option);
           });
         });
-    
+
+      fetch("/activities", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(activity => {
+          const selectActivity = document.getElementById("prSelectActivity")
+          activity.forEach(ac => {
+            const optionActivity = document.createElement("optionActivity");
+            optionActivity.value = ac;
+            optionActivity.textContent = ac;
+            selectActivity.appendChild(optionActivity);
+          });
+        });
+
       // Écoute l’événement de sélection
       document.getElementById("prSelect").addEventListener("change", (e) => {
         const selectedPr = e.target.value;
         if (selectedPr) {
           window.location.href = `/personal-record-page/${selectedPr}`;
+        }
+      });
+      document.getElementById("prSelectActivity").addEventListener("change", (f) => {
+        const selectedAct = f.target.value;
+        if (selectedAct) {
+          window.location.href = `/strava/${selectedAct}`;
         }
       });
     }

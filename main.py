@@ -139,6 +139,7 @@ def fetch_strava_activities(current_user):
         return {"message": "Erreur API Strava"}, 400
 
     activities = response.json()
+    nombre_activite=len(activities)
     for act in activities:
         # Ne stocke que les nouvelles activités
         if not StravaActivity.query.filter_by(strava_id=act["id"]).first():
@@ -168,7 +169,8 @@ def fetch_strava_activities(current_user):
                         db.session.add(sample)
 
     db.session.commit()
-    return {"message": "Activités Strava mises à jour"}
+    return {"message": "Activités Strava mises à jour",
+            "nombres d'activités": {nombre_activite}}
 
 @app.route("/")
 def index():
