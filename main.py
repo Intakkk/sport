@@ -247,9 +247,19 @@ def get_pr_types(current_user):
     pr_types = db.session.query(Personal_record.pr).filter_by(user_id=current_user.id).distinct().all()
     return jsonify([pr[0] for pr in pr_types])
 
+@app.route("/activities", methods=["GET"])
+@token_required
+def get_activities(current_user):
+    activities = db.session.query(StravaActivity.strava_id).filter_by(user_id=current_user.id).distinct().all()
+    return jsonify([act[0] for act in activities])
+
 @app.route("/personal-record-page/<pr_type>")
 def personal_record_detail(pr_type):
     return render_template("personal_record_type.html", pr_type=pr_type)
+
+@app.route("/strava/<int:stravaid>")
+def graph_activity(stravaid):
+    return render_template("strava_activity.html", stravaid=stravaid)
 
 @app.route("/personal-record/<pr_type>", methods=["GET"])
 @token_required
