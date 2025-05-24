@@ -87,7 +87,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
     }
-
+    if (window.location.pathname === "/personal-record-add") {
+      const token = localStorage.getItem("token");
+    
+      if (!token) {
+        document.body.innerHTML = "<p>Veuillez vous connecter.</p>";
+        return;
+      }
+      
+      document.getElementById("returnPRIndex").addEventListener("click", () => {
+        window.location.href = `/personal-index`;
+      });
+    }
+    
     if (window.location.pathname === "/personal-index") {
       const token = localStorage.getItem("token");
     
@@ -141,6 +153,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (selectedAct) {
           window.location.href = `/strava/${selectedAct}`;
         }
+      });
+      document.getElementById("addPR").addEventListener("click", () => {
+        window.location.href = `/personal-record-add`;
       });
     }
 

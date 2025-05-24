@@ -268,8 +268,6 @@ def personal_record(pr_type, exo_name):
 @app.route("/get-personal-record/<pr_type>/<exo_name>", methods=["GET"])
 @token_required
 def get_personal_record(current_user, pr_type, exo_name):
-    print("PR type reçu:", pr_type)
-    print("Nom exo reçu:", exo_name)
     pr = db.session.query(Personal_record).join(Exo).filter(Personal_record.user_id==current_user.id, Personal_record.pr==pr_type, Exo.name==exo_name).order_by(Personal_record.date.asc()).all()
     result = []
 
@@ -292,7 +290,6 @@ def personal_record_add():
 @token_required
 def add_personal_record(current_user):
     data = request.get_json()
-    print(data)
     if not all(key in data for key in ["exo_id", "pr", "quantity", "time", "added_weight", "date", "weight"]):
             return jsonify({"message": "Données invalides; champs manquants"}), 400
 
