@@ -149,7 +149,8 @@ def fetch_strava_activities(current_user):
             )
             db.session.add(new_act)
             db.session.flush() # pour obtenir new_act.id avant le commit
-            
+            print("activité ajoutée à StravaActivity")
+
             activity_id = act["id"]
             hr_stream_url = f"https://www.strava.com/api/v3/activities/{activity_id}/streams"
             hr_params = {"keys": "heart_rate,time", "key_by_type": "true"}
@@ -157,7 +158,9 @@ def fetch_strava_activities(current_user):
 
             if hr_response.status_code == 200:
                 hr_stream = hr_response.json()
+                print(hr_stream.keys())
                 if "heart_rate" in hr_stream and "time" in hr_stream:
+                    print("hr_stream reçu")
                     hr_values = hr_stream["heart_rate"]["data"]
                     time_values = hr_stream["time"]["data"]
                     for hr, t in zip(hr_values, time_values):
@@ -167,10 +170,13 @@ def fetch_strava_activities(current_user):
                             time=t
                         )
                         db.session.add(sample)
+                    print("samples ajoutés")
 
     db.session.commit()
-    return {"message": "Activités Strava mises à jour",
-            "nombres d'activités": {nombre_activite}}
+    return {
+        "message": "Activités Strava mises à jour",
+        "nombres d'activités": nombre_activite
+    }
 
 @app.route("/")
 def index():
