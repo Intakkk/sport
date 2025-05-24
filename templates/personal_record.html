@@ -2,19 +2,31 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Mes Personal Records</title>
+  <title>PR : {{ pr_type }} pour l'exercice {{ exo_name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-  <h2>Choisis le type de PR</h2>
-  <select id="prSelect">
-    <option value="">-- Sélectionner un PR --</option>
-  </select>
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-  <h2>Choisis l'activité</h2>
-  <select id="prSelectActivity">
-    <option value="">-- Sélectionner une activité --</option>
-  </select>
+<body data-pr-type="{{ pr_type }}" data-exo-name="{{ exo_name }}">
+  <h1>PR : {{ pr_type }} pour l'exercice {{ exo_name }}</h1>
+  <table id="pr-table" border="1">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Quantity</th>
+        <th>Time</th>
+        <th>Added weight</th>
+        <th>Body weight</th>
+        <th>Bodyweight %</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Les lignes seront injectées ici -->
+    </tbody>
+  </table>
+  <div>
+    <h2>PR</h2>
+    <canvas id="prChart" width="500" height="300"></canvas>
+  </div>
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

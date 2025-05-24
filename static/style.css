@@ -65,8 +65,8 @@ table {
 }
 
 table thead {
-  background-color: #007bff;
-  color: white;
+  background-color: #ffbb00;
+  color: rgb(0, 0, 0);
 }
 
 table th,
@@ -97,5 +97,5 @@ canvas#prChart {
   margin-top: 1rem;
   font-weight: bold;
   color: #d9534f;
-  text-align: center;
+  text-align: left;
 }

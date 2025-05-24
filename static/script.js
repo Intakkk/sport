@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const form = document.getElementById("loginForm");
+    const form_login = document.getElementById("loginForm");
 
-    if (form) {
-      form.addEventListener("submit", async (e) => {
+    if (form_login) {
+      form_login.addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
@@ -20,12 +20,75 @@ document.addEventListener("DOMContentLoaded", async () => {
   
         if (response.ok) {
           localStorage.setItem("token", data.token);
-          window.location.href = "/personal-record-page";
+          window.location.href = "/personal-index";
         }
       });
     }
 
-    if (window.location.pathname === "/personal-record-page") {
+    const form_register = document.getElementById("registerForm");
+
+    if (form_register) {
+      form_register.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("name").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+  
+        const response = await fetch("/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ name, email, password })
+        });
+  
+        const data = await response.json();
+        document.getElementById("message").innerText = data.message;
+  
+        if (response.ok) {
+          window.location.href = "/login-page";
+        }
+      });
+    }
+
+    const form_pr = document.getElementById("registerPR");
+
+    if (form_pr) {
+      form_pr.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem("token");
+        const exo_id = parseInt(document.getElementById("exo_id").value);
+        const pr = document.getElementById("pr").value;
+        const quantity = parseInt(document.getElementById("quantity").value);
+        const time = parseInt(document.getElementById("time").value);
+        const date = document.getElementById("date").value;
+        const added_weight = parseInt(document.getElementById("added_weight").value);
+        const weight = parseInt(document.getElementById("weight").value);
+        
+        if (!token) {
+        document.body.innerHTML = "<p>Veuillez vous connecter.</p>";
+        return;
+        }
+
+        const response = await fetch("/personal-record", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ exo_id, pr, quantity, time, date, added_weight, weight })
+        });
+  
+        const data = await response.json();
+        document.getElementById("message").innerText = data.message;
+  
+        if (response.ok) {
+          window.location.href = "/personal-record-add";
+        }
+      });
+    }
+
+    if (window.location.pathname === "/personal-index") {
       const token = localStorage.getItem("token");
     
       if (!token) {
@@ -43,8 +106,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           const select = document.getElementById("prSelect");
           prTypes.forEach(pr => {
             const option = document.createElement("option");
-            option.value = pr;
-            option.textContent = pr;
+            option.value = `${pr.pr}:${pr.exercise}`;
+            option.textContent = `${pr.exercise} - ${pr.pr}`;
             select.appendChild(option);
           });
         });
@@ -58,10 +121,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         .then(activity => {
           const selectActivity = document.getElementById("prSelectActivity")
           activity.forEach(ac => {
-            const optionActivity = document.createElement("optionActivity");
-            optionActivity.value = ac;
-            optionActivity.textContent = ac;
-            selectActivity.appendChild(optionActivity);
+            const optionActivity = document.createElement("option");
+            option.value = ac;
+            option.textContent = ac;
+            selectActivity.appendChild(option);
           });
         });
 
@@ -69,7 +132,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("prSelect").addEventListener("change", (e) => {
         const selectedPr = e.target.value;
         if (selectedPr) {
-          window.location.href = `/personal-record-page/${selectedPr}`;
+          const [pr, exo] = selectedPr.split(":");
+          window.location.href = `/personal-record/${encodeURIComponent(pr)}/${encodeURIComponent(exo)}`;
         }
       });
       document.getElementById("prSelectActivity").addEventListener("change", (f) => {
@@ -80,8 +144,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    if (window.location.pathname.startsWith("/personal-record-page/") && window.location.pathname !== "/personal-record-page") {
-      const prType = window.location.pathname.split("/").pop();
+    if (window.location.pathname.startsWith("/personal-record/") && window.location.pathname !== "/personal-record") {
+      const body = document.querySelector('body');
+      const prType = body.getAttribute('data-pr-type');
+      const exoName = body.getAttribute('data-exo-name');
       const token = localStorage.getItem("token");
   
       if (!token) {
@@ -90,7 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
   
       try {
-        const response = await fetch(`/personal-record/${prType}`, {
+        const response = await fetch(`/get-personal-record/${prType}/${exoName}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -112,6 +178,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           row.innerHTML = `
             <td>${pr.date}</td>
             <td>${pr.quantity}</td>
+            <td>${pr.time}</td>
             <td>${pr.added_weight}</td>
             <td>${pr.weight}</td>
             <td>${pr.bodyweight}</td>

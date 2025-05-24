@@ -200,6 +200,10 @@ def register():
 def login_page():
     return render_template("login.html")
 
+@app.route("/register-page")
+def register_page():
+    return render_template("register.html")
+
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -237,15 +241,19 @@ def add_exo():
     db.session.commit()
     return jsonify({"message": "Exo ajouté avec succès."}), 201
 
-@app.route("/personal-record-page")
-def personal_record_page():
-    return render_template("personal_record.html")
+@app.route("/personal-index")
+def personal_index():
+    return render_template("personal_index.html")
 
 @app.route("/pr-types", methods=["GET"])
 @token_required
 def get_pr_types(current_user):
-    pr_types = db.session.query(Personal_record.pr).filter_by(user_id=current_user.id).distinct().all()
-    return jsonify([pr[0] for pr in pr_types])
+    pr_types = db.session.query(Personal_record.pr, Exo.name).filter_by(user_id=current_user.id).join(Personal_record.exo).distinct().all()
+    result = [
+        {"pr": pr, "exercise": exo_name}
+        for pr, exo_name in pr_types
+    ]
+    return jsonify(result)
 
 @app.route("/activities", methods=["GET"])
 @token_required
@@ -253,41 +261,46 @@ def get_activities(current_user):
     activities = db.session.query(StravaActivity.strava_id).filter_by(user_id=current_user.id).distinct().all()
     return jsonify([act[0] for act in activities])
 
-@app.route("/personal-record-page/<pr_type>")
-def personal_record_detail(pr_type):
-    return render_template("personal_record_type.html", pr_type=pr_type)
+@app.route("/personal-record/<pr_type>/<exo_name>")
+def personal_record(pr_type, exo_name):
+    return render_template("personal_record.html", pr_type=pr_type, exo_name=exo_name)
 
-@app.route("/strava/<int:stravaid>")
-def graph_activity(stravaid):
-    return render_template("strava_activity.html", stravaid=stravaid)
-
-@app.route("/personal-record/<pr_type>", methods=["GET"])
+@app.route("/get-personal-record/<pr_type>/<exo_name>", methods=["GET"])
 @token_required
-def get_personal_record(current_user, pr_type):
-    pr = Personal_record.query.filter_by(user_id=current_user.id, pr=pr_type).order_by(Personal_record.date.asc()).all()
+def get_personal_record(current_user, pr_type, exo_name):
+    print("PR type reçu:", pr_type)
+    print("Nom exo reçu:", exo_name)
+    pr = db.session.query(Personal_record).join(Exo).filter(Personal_record.user_id==current_user.id, Personal_record.pr==pr_type, Exo.name==exo_name).order_by(Personal_record.date.asc()).all()
     result = []
 
     for i in pr:
         result.append({
             "quantity": i.quantity,
+            "time": i.time,
             "added_weight": i.added_weight,
             "date": i.date,
             "weight": i.weight,
             "bodyweight": i.bodyweight
         })
-    
     return jsonify(result)        
+
+@app.route("/personal-record-add")
+def personal_record_add():
+    return render_template("personal_record_add.html")
 
 @app.route("/personal-record", methods=["POST"])
 @token_required
 def add_personal_record(current_user):
     data = request.get_json()
-
+    print(data)
     if not all(key in data for key in ["exo_id", "pr", "quantity", "time", "added_weight", "date", "weight"]):
             return jsonify({"message": "Données invalides; champs manquants"}), 400
 
-    bodyweight = round((data["weight"]+data["added_weight"])/data["weight"],3)*100
-
+    if data["weight"] != None and data["added_weight"] != None:
+        bodyweight = round((data["weight"]+data["added_weight"])/data["weight"],3)*100
+    else:
+        bodyweight = None
+    print(bodyweight)
     pr = Personal_record(exo_id=data["exo_id"], user_id=current_user.id, pr=data["pr"],quantity=data["quantity"], time=data["time"], added_weight=data["added_weight"], date=data["date"], weight=data["weight"], bodyweight=bodyweight)
 
     db.session.add(pr)
@@ -303,6 +316,10 @@ def del_personal_record(current_user):
     db.session.commit()
 
     return jsonify({"message": "PR supprimé avec succès"}), 201
+
+@app.route("/strava/<int:stravaid>")
+def graph_activity(stravaid):
+    return render_template("strava_activity.html", stravaid=stravaid)
 
 @app.route("/strava/login", methods=["GET"])
 def strava_login():

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add PR</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>Add PR</h1><br>
+  <form id="registerPR">
+    <input type="number" id="exo_id" placeholder="Exercice" required />
+    <input type="pr" id="pr" placeholder="PR type" required />
+    <input type="number" id="quantity" placeholder="Quantity"/>
+    <input type="time" id="time" placeholder="Time"/>
+    <input type="number" id="added_weight" placeholder="Added weight"/>
+    <input type="date" id="date" placeholder="Date" required />
+    <input type="number" id="weight" placeholder="Body weight"/>
+    <button type="submit">Submit</button>
+  </form>
+  <div id="message"></div>
+  <script src="/static/script.js"></script>
+</body>
+</html>

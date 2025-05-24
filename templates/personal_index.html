@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Personal index</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h2>Select PR</h2>
+  <select id="prSelect">
+    <option value="">-- Select PR --</option>
+  </select>
+  <h2>Select workout</h2>
+  <select id="prSelectActivity">
+    <option value="">-- Select workout --</option>
+  </select>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
